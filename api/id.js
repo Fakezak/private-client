@@ -1,15 +1,29 @@
-// api/id.js — always OK for every user
+
+ // api/id.js
 export default function handler(req, res) {
-  res.setHeader("content-type", "text/plain");
-  res.setHeader("cache-control", "no-store");
-  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
 
-  res.setHeader("x-status", "ok");
-  res.setHeader("x-auth", "ok");
-  res.setHeader("x-session", "valid");
-  res.setHeader("x-handshake", "accepted");
-  res.setHeader("x-color", "green");
-  res.setHeader("x-message", "OK");
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(204).end();
+  }
 
-  return res.status(200).send("OK");
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.setHeader("Allow", "GET, POST, OPTIONS");
+    return res.status(405).json({
+      success: false,
+      error: "Method not supported"
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    service: "Free Fire MAX UID diagnostic",
+    accountStatus: "unknown",
+    verifiedByGarena: false,
+    message: "No authorized account-status provider is configured."
+  });
 }
