@@ -64,35 +64,114 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
   // -------- Missing UID --------
   if (!uid) {
     return res.status(400).json({
-      ok: false,
-      code: 1,
-      status: 1,
+      ok: false, code: 1, status: 1,
       reason: 'missing_uid',
-      msg: 'uid required',
-      message: 'uid required',
-      error: 'uid required'
+      msg: 'uid required', message: 'uid required', error: 'uid required'
     });
   }
 
-  // -------- Save UID --------
-  const record = {
+  // -------- LOOKUP FIRST: does this player already exist? --------
+  let existing = null;
+  try {
+    existing = await getUid(String(uid));
+  } catch (e) {
+    console.error('kv_get_error', e);
+  }
+
+  const now = Date.now();
+
+  // ---------- EXISTING ACCOUNT ----------
+  if (existing) {
+    // update last_seen, keep everything else
+    existing.last_seen = now;
+    existing.ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    existing.ua = req.headers['user-agent'] || 'unknown';
+
+    try {
+      await saveUid(existing.uid, existing);
+    } catch (e) {
+      console.error('kv_save_error', e);
+    }
+
+    return res.status(200).json({
+      code: 0,
+      status: 0,
+      success: true,
+      ok: true,
+
+      // banner
+      msg: ZAKA,
+      message: ZAKA,
+      error: ZAKA,
+      motd: ZAKA,
+      banner: ZAKA,
+      lobby_banner: ZAKA,
+      status_text: ZAKA,
+      network_error: ZAKA,
+      display_message: ZAKA,
+      server_message: ZAKA,
+
+      // identity
+      uid: existing.uid,
+      player_id: existing.uid,
+      playerId: existing.uid,
+      user_id: existing.uid,
+      userId: existing.uid,
+      account_id: existing.uid,
+
+      username: existing.username || null,
+      display_name: existing.display_name || existing.username || existing.uid,
+
+      // session
+      token: existing.token || (existing.uid + '_' + now),
+      session: existing.token || (existing.uid + '_' + now),
+      sessionId: existing.token || (existing.uid + '_' + now),
+      session_id: existing.token || (existing.uid + '_' + now),
+
+      // ---- THE FIX ----
+      reset: false,          // DO NOT reset
+      new_account: false,    // DO NOT prompt account creation
+      is_new: false,
+      isNew: false,
+      exists: true,
+      registered: true,
+      needs_registration: false,
+      needsRegistration: false,
+      create_account: false,
+      createAccount: false,
+
+      banned: existing.banned || false,
+      created_at: existing.first_seen || existing.created_at || now,
+
+      server: 'https://private-client-ten.vercel.app',
+      serverUrl: 'https://private-client-ten.vercel.app',
+      server_url: 'https://private-client-ten.vercel.app',
+      redirect: 'https://private-client-ten.vercel.app',
+      url: 'https://private-client-ten.vercel.app'
+    });
+  }
+
+  // ---------- NEW ACCOUNT (first time this UID shows up) ----------
+  const newRecord = {
     uid: String(uid),
-    first_seen: Date.now(),
-    last_seen: Date.now(),
+    username: null,
+    display_name: null,
+    token: String(uid) + '_' + now,
+    first_seen: now,
+    last_seen: now,
+    created_at: now,
     ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown',
     ua: req.headers['user-agent'] || 'unknown',
+    banned: false,
     server: 'private'
   };
 
   try {
-    await saveUid(record.uid, record);
+    await saveUid(newRecord.uid, newRecord);
   } catch (e) {
     console.error('kv_save_error', e);
   }
 
-  const sessionToken = record.uid + '_' + Date.now();
-
-  // -------- Response --------
   return res.status(200).json({
     code: 0,
     status: 0,
@@ -102,11 +181,6 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
     msg: ZAKA,
     message: ZAKA,
     error: ZAKA,
-    errorMsg: ZAKA,
-    error_msg: ZAKA,
-    errmsg: ZAKA,
-    info: ZAKA,
-    notice: ZAKA,
     motd: ZAKA,
     banner: ZAKA,
     lobby_banner: ZAKA,
@@ -115,20 +189,35 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
     display_message: ZAKA,
     server_message: ZAKA,
 
-    banner_html: `<color=#ff0000>${ZAKA}</color>`,
-    banner_source: `\x07ff0000${ZAKA}`,
+    uid: newRecord.uid,
+    player_id: newRecord.uid,
+    playerId: newRecord.uid,
+    user_id: newRecord.uid,
+    userId: newRecord.uid,
+    account_id: newRecord.uid,
 
-    uid: record.uid,
-    player_id: record.uid,
-    playerId: record.uid,
-    user_id: record.uid,
-    userId: record.uid,
-    account_id: record.uid,
+    username: null,
+    display_name: newRecord.uid,
 
-    token: sessionToken,
-    session: sessionToken,
-    sessionId: sessionToken,
-    session_id: sessionToken,
+    token: newRecord.token,
+    session: newRecord.token,
+    sessionId: newRecord.token,
+    session_id: newRecord.token,
+
+    // first time only
+    reset: true,
+    new_account: true,
+    is_new: true,
+    isNew: true,
+    exists: false,
+    registered: false,
+    needs_registration: true,
+    needsRegistration: true,
+    create_account: true,
+    createAccount: true,
+
+    banned: false,
+    created_at: now,
 
     server: 'https://private-client-ten.vercel.app',
     serverUrl: 'https://private-client-ten.vercel.app',
