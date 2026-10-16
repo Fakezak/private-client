@@ -1,8 +1,7 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/account", "destination": "/api/account" },
-    { "source": "/register", "destination": "/api/register" },
-    { "source": "/health", "destination": "/api/health" }
+    { "source": "/", "destination": "/api/id" },
+    { "source": "/id", "destination": "/api/id" }
   ]
 }
