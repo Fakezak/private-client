@@ -1,29 +1,39 @@
+// api/id.js — check UID, return OK or SUSPENDED
+const SUSPENSION_MS = 5 * 24 * 60 * 60 * 1000; // 5 days
 
- // api/id.js
+// ============================================================
+// BAN LIST — "UID": "ISO date ban started"
+// Server adds 5 days. Delete the line to unban.
+// ============================================================
+const BANS = {
+  "8749607076": "2026-10-15T00:00:00Z",
+};
+
 export default function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store");
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("content-type", "text/plain");
+  res.setHeader("cache-control", "no-store");
+  res.setHeader("access-control-allow-origin", "*");
 
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    return res.status(204).end();
+  const playerId = req.query.id;
+
+  // No UID → OK
+  if (!playerId) {
+    return res.status(200).send("OK");
   }
 
-  if (req.method !== "GET" && req.method !== "POST") {
-    res.setHeader("Allow", "GET, POST, OPTIONS");
-    return res.status(405).json({
-      success: false,
-      error: "Method not supported"
-    });
+  // Not in ban list → OK
+  const banStart = BANS[playerId];
+  if (!banStart) {
+    return res.status(200).send("OK");
   }
 
-  return res.status(200).json({
-    success: true,
-    service: "Free Fire MAX UID diagnostic",
-    accountStatus: "unknown",
-    verifiedByGarena: false,
-    message: "No authorized account-status provider is configured."
-  });
+  // Check 5-day window
+  const endTime = Date.parse(banStart) + SUSPENSION_MS;
+  if (Date.now() >= endTime) {
+    return res.status(200).send("OK");
+  }
+
+  // Still suspended — tell the client
+  const endDate = new Date(endTime).toISOString();
+  return res.status(200).send(`SUSPENDED ${endDate}`);
 }
