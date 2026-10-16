@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   const uid = parseUid(req);
   const isBrowser = (req.headers.accept || '').includes('text/html') && !secret;
 
-  // -------- Browser view --------
+  // -------- Browser view (white OK page) --------
   if (isBrowser) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(`<!doctype html>
@@ -70,7 +70,7 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
     });
   }
 
-  // -------- LOOKUP FIRST: does this player already exist? --------
+  // -------- LOOKUP: does this player already exist? --------
   let existing = null;
   try {
     existing = await getUid(String(uid));
@@ -82,36 +82,19 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
 
   // ---------- EXISTING ACCOUNT ----------
   if (existing) {
-    // update last_seen, keep everything else
     existing.last_seen = now;
     existing.ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
     existing.ua = req.headers['user-agent'] || 'unknown';
 
-    try {
-      await saveUid(existing.uid, existing);
-    } catch (e) {
-      console.error('kv_save_error', e);
-    }
+    try { await saveUid(existing.uid, existing); } catch (e) { console.error('kv_save_error', e); }
 
     return res.status(200).json({
-      code: 0,
-      status: 0,
-      success: true,
-      ok: true,
+      code: 0, status: 0, success: true, ok: true,
 
-      // banner
-      msg: ZAKA,
-      message: ZAKA,
-      error: ZAKA,
-      motd: ZAKA,
-      banner: ZAKA,
-      lobby_banner: ZAKA,
-      status_text: ZAKA,
-      network_error: ZAKA,
-      display_message: ZAKA,
-      server_message: ZAKA,
+      msg: ZAKA, message: ZAKA, error: ZAKA, motd: ZAKA,
+      banner: ZAKA, lobby_banner: ZAKA, status_text: ZAKA,
+      network_error: ZAKA, display_message: ZAKA, server_message: ZAKA,
 
-      // identity
       uid: existing.uid,
       player_id: existing.uid,
       playerId: existing.uid,
@@ -122,15 +105,13 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
       username: existing.username || null,
       display_name: existing.display_name || existing.username || existing.uid,
 
-      // session
       token: existing.token || (existing.uid + '_' + now),
       session: existing.token || (existing.uid + '_' + now),
       sessionId: existing.token || (existing.uid + '_' + now),
       session_id: existing.token || (existing.uid + '_' + now),
 
-      // ---- THE FIX ----
-      reset: false,          // DO NOT reset
-      new_account: false,    // DO NOT prompt account creation
+      reset: false,
+      new_account: false,
       is_new: false,
       isNew: false,
       exists: true,
@@ -151,7 +132,7 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
     });
   }
 
-  // ---------- NEW ACCOUNT (first time this UID shows up) ----------
+  // ---------- NEW ACCOUNT (first time) ----------
   const newRecord = {
     uid: String(uid),
     username: null,
@@ -166,28 +147,14 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
     server: 'private'
   };
 
-  try {
-    await saveUid(newRecord.uid, newRecord);
-  } catch (e) {
-    console.error('kv_save_error', e);
-  }
+  try { await saveUid(newRecord.uid, newRecord); } catch (e) { console.error('kv_save_error', e); }
 
   return res.status(200).json({
-    code: 0,
-    status: 0,
-    success: true,
-    ok: true,
+    code: 0, status: 0, success: true, ok: true,
 
-    msg: ZAKA,
-    message: ZAKA,
-    error: ZAKA,
-    motd: ZAKA,
-    banner: ZAKA,
-    lobby_banner: ZAKA,
-    status_text: ZAKA,
-    network_error: ZAKA,
-    display_message: ZAKA,
-    server_message: ZAKA,
+    msg: ZAKA, message: ZAKA, error: ZAKA, motd: ZAKA,
+    banner: ZAKA, lobby_banner: ZAKA, status_text: ZAKA,
+    network_error: ZAKA, display_message: ZAKA, server_message: ZAKA,
 
     uid: newRecord.uid,
     player_id: newRecord.uid,
@@ -204,7 +171,6 @@ code{background:#f2f2f2;padding:2px 6px;border-radius:4px}</style></head>
     sessionId: newRecord.token,
     session_id: newRecord.token,
 
-    // first time only
     reset: true,
     new_account: true,
     is_new: true,
