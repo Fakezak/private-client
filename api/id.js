@@ -1,4 +1,4 @@
-// api/id.js — returns OK + TP + Aim Lock (On Fire)
+// api/id.js — returns OK + Teleport + Aim Lock + 2x Fire Rate
 export default function handler(req, res) {
   // Allow the game to read it (CORS)
   res.setHeader("access-control-allow-origin", "*");
@@ -10,31 +10,37 @@ export default function handler(req, res) {
   res.setHeader("x-session", "valid");
   res.setHeader("x-handshake", "accepted");
 
-  // 🌟 Teleport Command Headers 🌟
+  // 🌟 New Feature Headers 🌟
   res.setHeader("x-tp-enabled", "true");
-  res.setHeader("x-tp-mode", "map_marker");
-
-  // 🌟 Aim Lock Command Headers (Triggered on Fire) 🌟
   res.setHeader("x-aim-lock", "true");
-  res.setHeader("x-aim-trigger", "on_fire"); 
-  res.setHeader("x-aim-stickiness", "100");
+  res.setHeader("x-fire-rate", "2.0"); 
+  res.setHeader("x-activation", "on_input"); // Tells game to trigger on fire/tap
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // 🌟 Commands in the body text 🌟
+  // 🌟 Full Command Payload 🌟
   const responseText = JSON.stringify({
     status: "OK",
     features: {
-      teleport: true,
-      tp_mode: "map_marker",
-      aim_lock: true,
-      aim_trigger: "on_fire", // Tells client to only lock when firing
-      aim_smoothness: 1.0     // Max stickiness
+      teleport: {
+        enabled: true,
+        mode: "map_marker",
+        trigger: "tap_map"    // Turns on when user taps map
+      },
+      aim_lock: {
+        enabled: true,
+        mode: "sticky",
+        trigger: "on_fire"    // Turns on when user fires
+      },
+      shooting: {
+        fire_rate_multiplier: 2.0, // 2x Speed
+        trigger: "on_fire"
+      }
     }
   });
 
-  res.setHeader("content-type", "application/json"); // Switched to JSON for easier parsing
+  res.setHeader("content-type", "application/json");
   return res.status(200).send(responseText);
 }
