@@ -1,44 +1,59 @@
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
+using System;
+using System.Reflection;
 
-public class VercelLoader : MonoBehaviour
+public class VercelModDownloader : MonoBehaviour
 {
-    public string serverUrl = "https://private-client-ten.vercel.app/id";
+    string serverUrl = "https://private-client-ten.vercel.app/id";
 
-    void Start() { StartCoroutine(LoginToServer()); }
-
-    IEnumerator LoginToServer()
+    void Start()
     {
-        string playerId = SystemInfo.deviceUniqueIdentifier; 
-        string fullUrl = serverUrl + "?id=" + playerId;
+        StartCoroutine(FetchAndLoadMod());
+    }
 
-        using (UnityWebRequest webRequest = UnityWebRequest.Get(fullUrl))
+    IEnumerator FetchAndLoadMod()
+    {
+        // 1. Verify Login (Get OK)
+        using (UnityWebRequest loginReq = UnityWebRequest.Get(serverUrl))
         {
-            yield return webRequest.SendWebRequest();
+            yield return loginReq.SendWebRequest();
+            if (loginReq.downloadHandler.text != "OK") yield break;
+        }
 
-            if (webRequest.result == UnityWebRequest.Result.Success)
+        // 2. Ask server for the DLL
+        string dllUrl = serverUrl + "?action=get_mod";
+        using (UnityWebRequest dllReq = UnityWebRequest.Get(dllUrl))
+        {
+            yield return dllReq.SendWebRequest();
+
+            if (dllReq.result == UnityWebRequest.Result.Success)
             {
-                string responseText = webRequest.downloadHandler.text;
-                string serverJson = webRequest.GetResponseHeader("Server");
+                // Get the raw bytes of the DLL
+                byte[] dllBytes = dllReq.downloadHandler.data;
 
-                if (responseText == "OK" && !string.IsNullOrEmpty(serverJson))
+                // 3. Load the DLL into memory (This is the magic part!)
+                try
                 {
-                    ModData data = JsonUtility.FromJson<ModData>(serverJson);
+                    Assembly modAssembly = Assembly.Load(dllBytes);
                     
-                    // Apply Cheats
-                    PlayerPrefs.SetFloat("XP_Multiplier", data.mods.xp);
-                    Debug.Log("Speed: " + data.mods.speed);
+                    // Find the class we want to run (e.g., "VercelLoader")
+                    Type modType = modAssembly.GetType("VercelLoader");
                     
-                    // Show Green Message
-                    Debug.Log("<color=green>" + data.msg + "</color>");
+                    // Run the mod!
+                    if (modType != null)
+                    {
+                        GameObject modObj = new GameObject("VercelMod");
+                        modObj.AddComponent(modType);
+                        Debug.Log("Mod DLL Successfully Injected from Vercel!");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("Failed to load DLL: " + e.Message);
                 }
             }
         }
     }
 }
-
-[System.Serializable]
-public class ModData { public string msg; public Mods mods; }
-[System.Serializable]
-public class Mods { public float xp; public float speed; public bool noRecoil; public bool unlimitedAmmo; }
