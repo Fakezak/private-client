@@ -1,44 +1,47 @@
-import { readFileSync } from "fs";
-import { join } from "path";
-
 export default function handler(req, res) {
-  // 1. CORS Headers (Allow the Unity game to download the file)
+  // 1. Setup CORS and standard headers
+  res.setHeader("content-type", "text/plain; charset=utf-8");
+  res.setHeader("cache-control", "no-store");
   res.setHeader("access-control-allow-origin", "*");
-  res.setHeader("access-control-allow-methods", "GET, OPTIONS");
-  
+
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // 2. Check if the game is asking for the DLL
-  if (req.query.action === "get_mod") {
-    try {
-      // Read the DLL from the public folder
-      const dllPath = join(process.cwd(), "public", "VercelLoader.dll");
-      const dllBuffer = readFileSync(dllPath);
-
-      // Set headers so the game knows it's a binary file
-      res.setHeader("content-type", "application/octet-stream");
-      res.setHeader("content-disposition", "attachment; filename=\"VercelLoader.dll\"");
-      res.setHeader("x-auth", "success");
-      
-      // Send the raw DLL bytes
-      return res.status(200).send(dllBuffer);
-      
-    } catch (error) {
-      return res.status(500).send("Mod file not found.");
-    }
-  }
-
-  // 3. Standard Login Check (If they just ask for /id)
+  // 2. Get user ID and current time
   const playerId = req.query.id || "unknown";
-  
-  res.setHeader("content-type", "text/plain; charset=utf-8");
-  res.setHeader("x-ban", "false");
-  res.setHeader("x-protection", "active");
+  const timestamp = new Date().toISOString();
 
-  // Return OK for login, and give them the URL to download the mod
-  res.setHeader("x-mod-url", "https://private-client-ten.vercel.app/id?action=get_mod");
+  // 3. Create the Metadata
+  const metadata = {
+    server_name: "Private Client Mod Server",
+    version: "2.0.1",
+    author: "Fakezak",
+    timestamp: timestamp,
+    status: "operational"
+  };
+
+  // 4. Create the Cheat Payload (Aim & Spray)
+  const payload = {
+    uid: playerId,
+    meta: metadata,
+    mods: {
+      fire_rate_multiplier: 2.0,       // Faster spray
+      snap_to_head: true,              // Auto lock to head
+      force_bone: "head",              // Always target head bone
+      ignore_aim_origin: true,         // If aiming at foot/body, redirect to head
+      visible_check: false,            // Ignore walls
+      no_recoil: true
+    }
+  };
+
+  const payloadString = JSON.stringify(payload);
+
+  // 5. Send the payload and metadata in the headers
+  res.setHeader("x-mod-data", payloadString);
+  res.setHeader("x-server-meta", JSON.stringify(metadata));
+  res.setHeader("x-ban", "false");
   
+  // 6. The body just says OK so the game logs in normally
   return res.status(200).send("OK");
 }
