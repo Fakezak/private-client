@@ -1,8 +1,10 @@
 {
-  "name": "private-client",
-  "version": "1.0.0",
+  "name": "private-client-mega-server",
+  "version": "3.0.0",
   "type": "module",
+  "private": true,
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
+    "@upstash/redis": "^1.28.0",
+    "crypto-js": "^4.1.1"
   }
 }
